@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
 
 public class UTF8Util {
     public static final String OK = "+OK";
@@ -22,7 +23,10 @@ public class UTF8Util {
         String antwort = lese(inputStream);
         if (!antwort.startsWith(OK))
             throw new Exception(String.format(errorMsg, antwort));
-        return antwort;
+        if (antwort.length() > OK.length())
+            return antwort.substring(OK.length() + 1); // Strip UTF8Util.OK and Space-Character.
+        else
+            return "";
     }
 
     private static String bytesToString(byte[] bytes) throws UnsupportedEncodingException {
@@ -43,7 +47,10 @@ public class UTF8Util {
             int available_size = inputStream.available();
             if (available_size > 0) {
                 byte daten[] = new byte[available_size];
-                inputStream.read(daten);
+                int readSize = inputStream.read(daten);
+                if (available_size > readSize) {
+                    daten = Arrays.copyOfRange(daten, 0, readSize);
+                }
                 read += bytesToString(daten);
             }
         }

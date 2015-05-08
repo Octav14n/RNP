@@ -1,28 +1,37 @@
 package client;
 
+import com.icegreen.greenmail.store.Store;
+import com.icegreen.greenmail.user.GreenMailUser;
 import com.icegreen.greenmail.util.GreenMail;
 import com.icegreen.greenmail.util.GreenMailUtil;
 import com.icegreen.greenmail.util.ServerSetupTest;
 import helpers.PopState;
 import org.testng.annotations.*;
+
+import javax.mail.*;
+import javax.mail.internet.MimeMessage;
+
 import static org.testng.Assert.*;
 
 import java.io.IOException;
+import java.util.Properties;
 
 public class ClientControlTest {
-    private final static String UNICODE = "✉";
+    private final static String UNICODE = "";//"✉";
     private final static String PASSWORD = "pa$$w0rd" + UNICODE;
+    private final static String HOST = "localhost";
 
     public final GreenMail greenMail = new GreenMail(ServerSetupTest.POP3);
+    private final GreenMailUser TEST_USER;
     public final int port;
-    private ClientControl client;
+    private ClientModel client;
 
     public ClientControlTest() {
         assertNotNull(greenMail);
         greenMail.start();
 
         // Create a test User
-        greenMail.setUser("test", PASSWORD);
+        TEST_USER = greenMail.setUser("test", PASSWORD);
 
         port = greenMail.getPop3().getPort();
         assertTrue(port != 0, "TestServer wurde nicht gestartet.");
@@ -35,36 +44,65 @@ public class ClientControlTest {
 
     @Test(timeOut = 1000)
     public void authenticateSuccess() throws IOException {
-        ClientModel client = new ClientModel("127.0.0.1", port, "test", PASSWORD);
+        client = new ClientModel(HOST, port, TEST_USER.getLogin(), TEST_USER.getPassword());
         client.verbindungAufbauen();
-        client.run(PopState.AUTHORIZED);
+        client.run(PopState.TRANSACTION);
+
+        assertEquals(client.getMail_count(), 0);
+        assertEquals(client.getState(), PopState.TRANSACTION);
     }
 
-    //@Test
-    public void retrieveOneSuccess() {
-        client.retrieveMessage();
-        assertEquals(1, greenMail.getReceivedMessages().length);
+    @Test(timeOut = 2000, dependsOnMethods = "authenticateSuccess")
+    public void retrieveSuccess() throws MessagingException {
+        deliverEmails();
+
+        client.run(PopState.MAIL_AVAILABLE);
+        assertEquals(client.getMail_count(), 2);
+        client.run(PopState.TRANSACTION);
+        assertEquals(client.getMail_count(), 0);
+        assertEquals(getMessageCount(TEST_USER), 0);
+    }
+
+    private int getMessageCount(GreenMailUser user) throws MessagingException {
+        Properties properties = new Properties();
+        Session session = Session.getInstance(properties);
+        System.out.println(user.getLogin());
+        System.out.println(user.getPassword());
+        javax.mail.Store store = session.getStore(new URLName(
+                "pop3",
+                HOST,
+                port,
+                null,
+                user.getLogin(),
+                user.getPassword()
+        ));
+        store.connect();
+
+        Folder folder = store.getFolder("INBOX");
+        folder.open(Folder.READ_ONLY);
+        return folder.getMessageCount();
     }
 
     /** Setup some E-Mails for fetching later. */
-    private void deliverEmails() {
-        GreenMailUtil.sendTextEmailTest(
-                "test@127.0.0.1",
-                "simon.kosch@haw-hamburg.de",
-                "Test Nachricht. " + UNICODE,
-                "Dies ist eine Testnachricht\n" +
-                        "Diese Nachricht zerstört sich selber\n\n in..." +
-                        UNICODE +
-                        "Kurzer Zeit.\n"
-        );
-        GreenMailUtil.sendTextEmailTest(
-                "test@127.0.0.1",
-                "simon.kosch@haw-hamburg.de",
-                "Test Nachricht 2. " + UNICODE,
-                "Dies ist eine Testnachricht 2\n" +
-                        "Diese Nachricht zerstört sich selber\n\n in..." +
-                        UNICODE +
-                        "Kurzer Zeit.\n"
-        );
+    private void deliverEmails() throws MessagingException {
+        MimeMessage msg = new MimeMessage((Session) null);
+        msg.addRecipients(Message.RecipientType.TO, "test@127.0.0.1");
+        msg.setFrom("simon.kosch@haw-hamburg.de");
+        msg.setSubject("Test Nachricht. " + UNICODE);
+        msg.setText("Dies ist eine Testnachricht\n" +
+                "Diese Nachricht zerstört sich selber\n\r\n in..." +
+                UNICODE +
+                "Kurzer Zeit.\n");
+        TEST_USER.deliver(msg);
+
+        msg = new MimeMessage((Session) null);
+        msg.addRecipients(Message.RecipientType.TO, "test@127.0.0.1");
+        msg.setFrom("simon.kosch@haw-hamburg.de");
+        msg.setSubject("Test Nachricht 2. " + UNICODE);
+        msg.setText("Dies ist eine Testnachricht 2\n" +
+                "Diese Nachricht zerstört sich selber\r\n.\r\n in..." +
+                UNICODE +
+                "Kurzer Zeit.\n");
+        TEST_USER.deliver(msg);
     }
 }

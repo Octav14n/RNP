@@ -23,6 +23,8 @@ public class ClientModel implements Runnable {
 	private String password;
 	@Getter(AccessLevel.PROTECTED) //@Setter(AccessLevel.PROTECTED)
 	private PopState state = PopState.DISCONECTED;
+    @Getter(AccessLevel.PUBLIC) @Setter(AccessLevel.PRIVATE)
+    private int mail_count;
 
 	@Override
     public void run() {run(PopState.EXPECTING_EXIT);}
@@ -46,9 +48,12 @@ public class ClientModel implements Runnable {
                     case PASSWORD_SEND:
                         authenticate_final();
                         break;
-					case AUTHORIZED:
-						quit();
+					case TRANSACTION:
+						mail_check();
 						break;
+                    case MAIL_AVAILABLE:
+                        mail_fetch();
+                        break;
 				}
 			} catch (Exception e) {
                 e.printStackTrace();
@@ -69,6 +74,40 @@ public class ClientModel implements Runnable {
         }
     }
 
+    private void mail_fetch() throws Exception {
+        UTF8Util.schreibe(socket.getOutputStream(), "LIST");
+        UTF8Util.leseAssertOK(socket.getInputStream(), "List did not work.");
+        String antwort = UTF8Util.lese(socket.getInputStream());
+        assert antwort.indexOf(' ') != -1;
+
+        int mID = Integer.parseInt(antwort.substring(0, antwort.indexOf(' ')));
+
+        UTF8Util.schreibe(socket.getOutputStream(), "RETR " + mID);
+        UTF8Util.leseAssertOK(socket.getInputStream(), "RETR " + mID + " did not work.");
+        String msg = UTF8Util.lese(socket.getInputStream());
+
+        UTF8Util.schreibe(socket.getOutputStream(), "DELE " + mID);
+        UTF8Util.leseAssertOK(socket.getInputStream(), "DELE " + mID + " did not work.");
+
+        System.out.println(String.format("Msg retrieved:\n'%s' mail_count: %d", msg, getMail_count()));
+
+        setMail_count(getMail_count() - 1);
+        if (getMail_count() == 0) {
+            setState(PopState.TRANSACTION);
+        }
+    }
+
+    private void mail_check() throws Exception {
+        UTF8Util.schreibe(socket.getOutputStream(), "STAT");
+        String antwort = UTF8Util.leseAssertOK(socket.getInputStream(), "Stat did not work.");
+        assert antwort.indexOf(' ') != -1;
+
+        setMail_count(Integer.parseInt(antwort.substring(0, antwort.indexOf(' '))));
+        if (mail_count > 0) {
+            setState(PopState.MAIL_AVAILABLE);
+        }
+    }
+
     protected void setState(PopState state) {
         System.out.println(String.format("Switch state from: %s to: %s", getState().toString(), state.toString()));
         this.state = state;
@@ -82,7 +121,7 @@ public class ClientModel implements Runnable {
 
     private void authenticate_final() throws Exception {
         UTF8Util.leseAssertOK(socket.getInputStream(), "Username or Password not accepted: '%s'");
-        setState(PopState.AUTHORIZED);
+        setState(PopState.TRANSACTION);
     }
 
     private void authenticate_username() throws Exception {

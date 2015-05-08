@@ -1,7 +1,7 @@
 package helpers;
 
 /**
- * Created by octavian on 06.05.15.
+ * States the Client and Server can be in.
  */
 public enum PopState {
     EXPECTING_EXIT,
@@ -9,5 +9,6 @@ public enum PopState {
     CONNECTED,
     USERNAME_SEND,
     PASSWORD_SEND,
-    AUTHORIZED
+    TRANSACTION,
+    MAIL_AVAILABLE
 }
