@@ -3,3 +3,6 @@ language: java
 script:
   cd 02
   mvn test
+
+notifications:
+  email: false
