@@ -1,37 +1,54 @@
 package client;
 
-import com.icegreen.greenmail.junit.GreenMailRule;
 import com.icegreen.greenmail.user.GreenMailUser;
+import com.icegreen.greenmail.util.GreenMail;
 import com.icegreen.greenmail.util.GreenMailUtil;
 import com.icegreen.greenmail.util.ServerSetupTest;
-import junit.framework.TestCase;
-import org.junit.Rule;
+import org.junit.After;
 import org.junit.Test;
 
-import javax.mail.internet.MimeMessage;
+import java.io.IOException;
+
+import static org.junit.Assert.*;
 
 /**
  * Created by octavian on 04.05.15.
  */
-public class ClientControlTest extends TestCase {
+public class ClientControlTest {
     private final static String UNICODE = "✉";
     private final static String PASSWORD = "pa$$w0rd" + UNICODE;
 
-    @Rule
-    public final GreenMailRule greenMail = new GreenMailRule(ServerSetupTest.POP3);
+    public final GreenMail greenMail = new GreenMail(ServerSetupTest.POP3);
+    public final int port;
     private ClientControl client;
-    private final GreenMailUser USER_TEST;
 
     public ClientControlTest() {
-        USER_TEST = greenMail.setUser("test", PASSWORD);
-        int port = greenMail.getPop3().getPort();
+        assertNotNull(greenMail);
+        greenMail.start();
+        greenMail.setUser("test", PASSWORD);
+        //ServerSetup server = new ServerSetup(50000, "127.0.0.1", "pop3");
+        port = greenMail.getPop3().getPort();
+        assertTrue("TestServer wurde nicht gestartet.", port != 0);
+        System.out.println("setup complete");
 
-        client = new ClientControl(new ClientModel("127.0.0.1", port, "test", PASSWORD));
+        //client = new ClientControl(new ClientModel("127.0.0.1", port, "test", PASSWORD));
 
 
     }
 
+    @After
+    public void terdown() {
+        greenMail.stop();
+    }
+
     @Test
+    public void authenticateSuccess() throws IOException {
+        ClientModel client = new ClientModel("127.0.0.1", port, "test", PASSWORD);
+        client.verbindungAufbauen();
+        client.run();
+    }
+
+    //@Test
     public void retrieveOneSuccess() {
         client.retrieveMessage();
         assertEquals(1, greenMail.getReceivedMessages().length);

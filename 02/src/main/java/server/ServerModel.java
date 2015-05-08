@@ -1,6 +1,5 @@
 package server;
 
-import lombok.Data;
 import lombok.Getter;
 
 import java.io.IOException;
@@ -95,7 +94,7 @@ public class ServerModel {
 			while (!stopp && !socket.isClosed()) {
 				// Lese die eingehenden Daten.
 				String text = leseDaten(socket);
-				if (text != "") {
+				if (!text.equals("")) {
 					System.out.print("eingang: " + text + "");
 					// Ermittle Antwort der Eingabe.
 					String antwort = antwort(text);

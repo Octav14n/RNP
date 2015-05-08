@@ -7,5 +7,7 @@ public enum PopState {
     EXPECTING_EXIT,
     DISCONECTED,
     CONNECTED,
+    USERNAME_SEND,
+    PASSWORD_SEND,
     AUTHORIZED
 }

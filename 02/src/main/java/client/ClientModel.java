@@ -8,7 +8,6 @@ import lombok.Setter;
 
 import java.io.IOException;
 import java.net.Socket;
-import java.net.UnknownHostException;
 
 public class ClientModel implements Runnable {
 
@@ -22,7 +21,7 @@ public class ClientModel implements Runnable {
 	private String username;
 	@Getter(AccessLevel.PRIVATE) @Setter(AccessLevel.PROTECTED)
 	private String password;
-	@Getter(AccessLevel.PROTECTED) @Setter(AccessLevel.PROTECTED)
+	@Getter(AccessLevel.PROTECTED) //@Setter(AccessLevel.PROTECTED)
 	private PopState state = PopState.DISCONECTED;
 
 	@Override
@@ -30,33 +29,77 @@ public class ClientModel implements Runnable {
 		if (PopState.DISCONECTED == getState() || PopState.EXPECTING_EXIT == getState())
 			throw new RuntimeException("Can't start Client with state: " + getState().toString());
 		while (PopState.EXPECTING_EXIT != getState()) {
-			switch (getState()) {
-				case CONNECTED:
-					authenticate();
-					break;
-				case AUTHORIZED:
-					fetchMails();
-					break;
-			}
+			try {
+				switch (getState()) {
+					case CONNECTED:
+						authenticate_username();
+						break;
+                    case USERNAME_SEND:
+                        authenticate_password();
+                        break;
+                    case PASSWORD_SEND:
+                        authenticate_final();
+                        break;
+					case AUTHORIZED:
+						quit();
+						break;
+				}
+			} catch (Exception e) {
+                e.printStackTrace();
+                setState(PopState.EXPECTING_EXIT);
+            }
 		}
+        try {
+            verbindungTrennen();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    protected void setState(PopState state) {
+        System.out.println(String.format("Switch state from: %s to: %s", getState().toString(), state.toString()));
+        this.state = state;
+    }
+
+    private void quit() throws Exception {
+        UTF8Util.schreibe(socket.getOutputStream(), "QUIT");
+        UTF8Util.leseAssertOK(socket.getInputStream(), "Quit did not work.");
+        setState(PopState.EXPECTING_EXIT);
+    }
+
+    private void authenticate_final() throws Exception {
+        UTF8Util.leseAssertOK(socket.getInputStream(), "Username or Password not accepted: '%s'");
+        setState(PopState.AUTHORIZED);
+    }
+
+    private void authenticate_username() throws Exception {
+        UTF8Util.leseAssertOK(socket.getInputStream(), "Server does not greet: '%s'");
+
+		UTF8Util.schreibe(socket.getOutputStream(), "USER " + username);
+        setState(PopState.USERNAME_SEND);
 	}
 
-	private void authenticate() {
-		UTF8Util.schreibeBytes(socket.getOutputStream(), UTF8Util.stringToBytes("USER username"));
-	}
+    private void authenticate_password() throws Exception {
+        UTF8Util.leseAssertOK(socket.getInputStream(), "Username not accepted: '%s'");
+
+		UTF8Util.schreibe(socket.getOutputStream(), "PASS " + password);
+        setState(PopState.PASSWORD_SEND);
+    }
 
 	public ClientModel(String username, String password) {
-		this("127.0.0.1", 50000, username, password);
+		this("127.0.0.1", 50000, "username", password);
 	}
 
 	public ClientModel(String ip, int port, String username, String password) {
 		setIp(ip);
 		setPort(port);
+        setUsername(username);
+        setPassword(password);
 		System.out.print("127.0.0.1" + " -> " + getIp()
-				+ " (Client -> Server)." + "\n");
+				+ ":" + getPort() + " (Client -> Server)." + "\n");
 	}
 
-	public void verbindungAufbauen() throws UnknownHostException, IOException {
+	public void verbindungAufbauen() throws IOException {
 		// Es wird versucht eine Verbindung zum Server herzustellen.
 		if(!istVerbunden()){
 			setSocket(new Socket(getIp(), getPort()));
@@ -73,13 +116,9 @@ public class ClientModel implements Runnable {
 		}
 	}
 	
-	public boolean istVerbunden(){
-		if(PopState.DISCONECTED == getState() || getSocket() == null || getSocket().isClosed()){
-			return false;
-		}
-		if(getSocket().isConnected()){
-			return true;
-		}
-		return false;
-	}
+	public boolean istVerbunden() {
+        return !(
+                (getState() == PopState.DISCONECTED) || (getSocket() == null) || getSocket().isClosed()
+        ) && getSocket().isConnected();
+    }
 }
