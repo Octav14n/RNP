@@ -1,4 +1,6 @@
 # Prakitikumsaufgabe 2
+[![Build Status](https://travis-ci.org/Octav14n/RNP.svg?branch=master)](https://travis-ci.org/Octav14n/RNP)
+
 ## Aufgabe
 [Link](BAI-RN_SoSe15_Aufgabe2.pdf)
 
