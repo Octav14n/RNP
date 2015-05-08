@@ -1,4 +1,4 @@
 language: java
 
 script:
-	cd 02
+  cd 02
