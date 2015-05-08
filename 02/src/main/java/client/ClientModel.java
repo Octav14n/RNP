@@ -25,10 +25,16 @@ public class ClientModel implements Runnable {
 	private PopState state = PopState.DISCONECTED;
 
 	@Override
-	public void run() {
+    public void run() {run(PopState.EXPECTING_EXIT);}
+
+    /**
+     * Runs the finite state machine.
+     * @param tillState (Testing only) determines at which state the function returns.
+     */
+	public void run(PopState tillState) {
 		if (PopState.DISCONECTED == getState() || PopState.EXPECTING_EXIT == getState())
 			throw new RuntimeException("Can't start Client with state: " + getState().toString());
-		while (PopState.EXPECTING_EXIT != getState()) {
+		while (PopState.EXPECTING_EXIT != getState() && getState() != tillState) {
 			try {
 				switch (getState()) {
 					case CONNECTED:
@@ -46,13 +52,20 @@ public class ClientModel implements Runnable {
 				}
 			} catch (Exception e) {
                 e.printStackTrace();
+                try {
+                    quit();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
                 setState(PopState.EXPECTING_EXIT);
             }
 		}
-        try {
-            verbindungTrennen();
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (getState() == PopState.EXPECTING_EXIT) {
+            try {
+                verbindungTrennen();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -87,7 +100,7 @@ public class ClientModel implements Runnable {
     }
 
 	public ClientModel(String username, String password) {
-		this("127.0.0.1", 50000, "username", password);
+		this("127.0.0.1", 50000, username, password);
 	}
 
 	public ClientModel(String ip, int port, String username, String password) {

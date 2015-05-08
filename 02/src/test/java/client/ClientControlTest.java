@@ -1,19 +1,14 @@
 package client;
 
-import com.icegreen.greenmail.user.GreenMailUser;
 import com.icegreen.greenmail.util.GreenMail;
 import com.icegreen.greenmail.util.GreenMailUtil;
 import com.icegreen.greenmail.util.ServerSetupTest;
-import org.junit.After;
-import org.junit.Test;
+import helpers.PopState;
+import org.testng.annotations.*;
+import static org.testng.Assert.*;
 
 import java.io.IOException;
 
-import static org.junit.Assert.*;
-
-/**
- * Created by octavian on 04.05.15.
- */
 public class ClientControlTest {
     private final static String UNICODE = "✉";
     private final static String PASSWORD = "pa$$w0rd" + UNICODE;
@@ -25,27 +20,24 @@ public class ClientControlTest {
     public ClientControlTest() {
         assertNotNull(greenMail);
         greenMail.start();
+
+        // Create a test User
         greenMail.setUser("test", PASSWORD);
-        //ServerSetup server = new ServerSetup(50000, "127.0.0.1", "pop3");
+
         port = greenMail.getPop3().getPort();
-        assertTrue("TestServer wurde nicht gestartet.", port != 0);
-        System.out.println("setup complete");
-
-        //client = new ClientControl(new ClientModel("127.0.0.1", port, "test", PASSWORD));
-
-
+        assertTrue(port != 0, "TestServer wurde nicht gestartet.");
     }
 
-    @After
+    @AfterTest
     public void terdown() {
         greenMail.stop();
     }
 
-    @Test
+    @Test(timeOut = 1000)
     public void authenticateSuccess() throws IOException {
         ClientModel client = new ClientModel("127.0.0.1", port, "test", PASSWORD);
         client.verbindungAufbauen();
-        client.run();
+        client.run(PopState.AUTHORIZED);
     }
 
     //@Test
