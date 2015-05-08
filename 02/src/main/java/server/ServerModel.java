@@ -137,8 +137,6 @@ public class ServerModel {
 			byte[] bytes = text.getBytes("UTF-8");
 			OutputStream outputStream = socket.getOutputStream();
 			outputStream.write(bytes);
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

@@ -1,9 +1,7 @@
 package client;
 
-import com.icegreen.greenmail.store.Store;
 import com.icegreen.greenmail.user.GreenMailUser;
 import com.icegreen.greenmail.util.GreenMail;
-import com.icegreen.greenmail.util.GreenMailUtil;
 import com.icegreen.greenmail.util.ServerSetupTest;
 import helpers.PopState;
 import org.testng.annotations.*;

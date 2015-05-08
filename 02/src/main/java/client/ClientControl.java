@@ -5,7 +5,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.io.IOException;
-import java.net.UnknownHostException;
 
 public class ClientControl {
 
@@ -22,11 +21,7 @@ public class ClientControl {
 		//disconnect();
 	}
 
-	public void retrieveMessage() {
-
-	}
-
-	private void connect() {
+    private void connect() {
 		if (!getClientModel().istVerbunden()) {
 			try {
 				// Versuche die Verbindung zum Server herzustellen.
@@ -45,10 +40,7 @@ public class ClientControl {
 		if (getClientModel().istVerbunden()) {
 			// Versuche die Verbindung zum Server trennen.
 			// getClientModel().verbindungTrennen();
-			if (!getClientModel().istVerbunden()) {
-				System.out.println("Verbindung beendet.");
-			}
-		}
+        }
 	}
 
 }

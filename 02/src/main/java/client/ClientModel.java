@@ -11,51 +11,60 @@ import java.net.Socket;
 
 public class ClientModel implements Runnable {
 
-	@Getter @Setter(AccessLevel.PROTECTED)
-	private String ip;
-	@Getter @Setter(AccessLevel.PROTECTED)
-	private int port;
-	@Getter @Setter(AccessLevel.PROTECTED)
-	private Socket socket;
-	@Getter @Setter(AccessLevel.PRIVATE)
-	private String username;
-	@Getter(AccessLevel.PRIVATE) @Setter(AccessLevel.PROTECTED)
-	private String password;
-	@Getter(AccessLevel.PROTECTED) //@Setter(AccessLevel.PROTECTED)
-	private PopState state = PopState.DISCONECTED;
-    @Getter(AccessLevel.PUBLIC) @Setter(AccessLevel.PRIVATE)
+    @Getter
+    @Setter(AccessLevel.PROTECTED)
+    private String ip;
+    @Getter
+    @Setter(AccessLevel.PROTECTED)
+    private int port;
+    @Getter
+    @Setter(AccessLevel.PROTECTED)
+    private Socket socket;
+    @Getter
+    @Setter(AccessLevel.PRIVATE)
+    private String username;
+    @Getter(AccessLevel.PRIVATE)
+    @Setter(AccessLevel.PROTECTED)
+    private String password;
+    @Getter(AccessLevel.PROTECTED) //@Setter(AccessLevel.PROTECTED)
+    private PopState state = PopState.DISCONECTED;
+    @Getter(AccessLevel.PUBLIC)
+    @Setter(AccessLevel.PRIVATE)
     private int mail_count;
 
-	@Override
-    public void run() {run(PopState.EXPECTING_EXIT);}
+    @Override
+    public void run() {
+        run(PopState.EXPECTING_EXIT);
+    }
 
     /**
      * Runs the finite state machine.
+     *
      * @param tillState (Testing only) determines at which state the function returns.
      */
-	public void run(PopState tillState) {
-		if (PopState.DISCONECTED == getState() || PopState.EXPECTING_EXIT == getState())
-			throw new RuntimeException("Can't start Client with state: " + getState().toString());
-		while (PopState.EXPECTING_EXIT != getState() && getState() != tillState) {
-			try {
-				switch (getState()) {
-					case CONNECTED:
-						authenticate_username();
-						break;
+    public void run(PopState tillState) {
+        if (PopState.DISCONECTED == getState() || PopState.EXPECTING_EXIT == getState())
+            throw new RuntimeException("Can't start Client with state: " + getState().toString());
+        while (PopState.EXPECTING_EXIT != getState() && getState() != tillState) {
+            try {
+                switch (getState()) {
+                    case CONNECTED:
+                        authenticate_username();
+                        break;
                     case USERNAME_SEND:
                         authenticate_password();
                         break;
                     case PASSWORD_SEND:
                         authenticate_final();
                         break;
-					case TRANSACTION:
-						mail_check();
-						break;
+                    case TRANSACTION:
+                        mail_check();
+                        break;
                     case MAIL_AVAILABLE:
                         mail_fetch();
                         break;
-				}
-			} catch (Exception e) {
+                }
+            } catch (Exception e) {
                 e.printStackTrace();
                 try {
                     quit();
@@ -64,7 +73,7 @@ public class ClientModel implements Runnable {
                 }
                 setState(PopState.EXPECTING_EXIT);
             }
-		}
+        }
         if (getState() == PopState.EXPECTING_EXIT) {
             try {
                 verbindungTrennen();
@@ -127,48 +136,48 @@ public class ClientModel implements Runnable {
     private void authenticate_username() throws Exception {
         UTF8Util.leseAssertOK(socket.getInputStream(), "Server does not greet: '%s'");
 
-		UTF8Util.schreibe(socket.getOutputStream(), "USER " + username);
+        UTF8Util.schreibe(socket.getOutputStream(), "USER " + username);
         setState(PopState.USERNAME_SEND);
-	}
+    }
 
     private void authenticate_password() throws Exception {
         UTF8Util.leseAssertOK(socket.getInputStream(), "Username not accepted: '%s'");
 
-		UTF8Util.schreibe(socket.getOutputStream(), "PASS " + password);
+        UTF8Util.schreibe(socket.getOutputStream(), "PASS " + password);
         setState(PopState.PASSWORD_SEND);
     }
 
-	public ClientModel(String username, String password) {
-		this("127.0.0.1", 50000, username, password);
-	}
+    public ClientModel(String username, String password) {
+        this("127.0.0.1", 50000, username, password);
+    }
 
-	public ClientModel(String ip, int port, String username, String password) {
-		setIp(ip);
-		setPort(port);
+    public ClientModel(String ip, int port, String username, String password) {
+        setIp(ip);
+        setPort(port);
         setUsername(username);
         setPassword(password);
-		System.out.print("127.0.0.1" + " -> " + getIp()
-				+ ":" + getPort() + " (Client -> Server)." + "\n");
-	}
+        System.out.print("127.0.0.1" + " -> " + getIp()
+                + ":" + getPort() + " (Client -> Server)." + "\n");
+    }
 
-	public void verbindungAufbauen() throws IOException {
-		// Es wird versucht eine Verbindung zum Server herzustellen.
-		if(!istVerbunden()){
-			setSocket(new Socket(getIp(), getPort()));
-			setState(PopState.CONNECTED);
-		}
-	}
+    public void verbindungAufbauen() throws IOException {
+        // Es wird versucht eine Verbindung zum Server herzustellen.
+        if (!istVerbunden()) {
+            setSocket(new Socket(getIp(), getPort()));
+            setState(PopState.CONNECTED);
+        }
+    }
 
-	public void verbindungTrennen() throws IOException {
-		// Es wird versucht eine Verbindung zum Server trennen.
-		if(istVerbunden()){
-			getSocket().close();
-			setSocket(null);
-			setState(PopState.DISCONECTED);
-		}
-	}
-	
-	public boolean istVerbunden() {
+    public void verbindungTrennen() throws IOException {
+        // Es wird versucht eine Verbindung zum Server trennen.
+        if (istVerbunden()) {
+            getSocket().close();
+            setSocket(null);
+            setState(PopState.DISCONECTED);
+        }
+    }
+
+    public boolean istVerbunden() {
         return !(
                 (getState() == PopState.DISCONECTED) || (getSocket() == null) || getSocket().isClosed()
         ) && getSocket().isConnected();
