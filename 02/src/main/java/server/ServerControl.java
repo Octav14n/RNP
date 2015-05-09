@@ -1,24 +1,18 @@
 package server;
 
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.io.IOException;
+
 public class ServerControl {
 
+    @Getter @Setter(AccessLevel.PRIVATE)
 	private ServerModel serverModel;
 
-	public ServerControl(ServerModel serverModel) {
+	public ServerControl(ServerModel serverModel) throws IOException {
 		setServerModel(serverModel);
-		standard();
-	}
-	
-	private void standard(){
-		getServerModel().serverSocketStart();
-		getServerModel().clientsAnnehmen();
-	}
-
-	public ServerModel getServerModel() {
-		return serverModel;
-	}
-
-	private void setServerModel(ServerModel serverModel) {
-		this.serverModel = serverModel;
+		serverModel.clientsAnnehmen();
 	}
 }

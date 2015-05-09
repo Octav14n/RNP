@@ -4,43 +4,50 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.io.IOException;
+public class ClientControl implements Runnable {
+    public static long interval = 1000;
 
-public class ClientControl {
+    @Getter @Setter(AccessLevel.PRIVATE)
+    public boolean shallEnd = false;
+	@Getter @Setter(AccessLevel.PRIVATE)
+	private IClientModel clientModel;
+    private Thread thread;
 
-	@Getter @Setter(AccessLevel.PROTECTED)
-	private ClientModel clientModel;
 
-	public ClientControl(ClientModel clientModel) {
+	public ClientControl(IClientModel clientModel) {
 		setClientModel(clientModel);
-		standard();
+        thread = new Thread(this);
+        thread.setDaemon(true);
+        thread.start();
 	}
 
-	private void standard() {
-		connect();
-		//disconnect();
-	}
+    public void end() throws InterruptedException {
+        setShallEnd(true);
+        thread.interrupt();
+        thread.join(100);
+    }
 
-    private void connect() {
-		if (!getClientModel().istVerbunden()) {
-			try {
-				// Versuche die Verbindung zum Server herzustellen.
-				getClientModel().verbindungAufbauen();
-				if (getClientModel().istVerbunden()) {
-					// Den Thread zum Zuhoeren starten.
-				}
+    public boolean isEnded() {
+        return !thread.isAlive();
+    }
 
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-	}
-
-	private void disconnect() {
-		if (getClientModel().istVerbunden()) {
-			// Versuche die Verbindung zum Server trennen.
-			// getClientModel().verbindungTrennen();
+	public void run() {
+        while (!isShallEnd()) {
+            try {
+                clientModel.verbindungAufbauen();
+                clientModel.run();
+            } catch (Exception e) {
+                e.printStackTrace();
+                return;
+            }
+            try {
+                Thread.sleep(interval);
+            } catch (InterruptedException e) {
+                // Shall we die now?
+                if (!isShallEnd())
+                    e.printStackTrace();
+            }
         }
-	}
+    }
 
 }

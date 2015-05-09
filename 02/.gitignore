@@ -76,3 +76,6 @@ crashlytics-build.properties
 
 # Offline Documentation of the protocol
 doc/
+
+# Ablage der E-Mails
+tmp/

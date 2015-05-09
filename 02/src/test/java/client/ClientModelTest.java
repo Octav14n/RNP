@@ -4,17 +4,17 @@ import com.icegreen.greenmail.user.GreenMailUser;
 import com.icegreen.greenmail.util.GreenMail;
 import com.icegreen.greenmail.util.ServerSetupTest;
 import helpers.PopState;
+
 import org.testng.annotations.*;
+import static org.testng.Assert.*;
 
 import javax.mail.*;
 import javax.mail.internet.MimeMessage;
 
-import static org.testng.Assert.*;
-
 import java.io.IOException;
 import java.util.Properties;
 
-public class ClientControlTest {
+public class ClientModelTest {
     private final static String UNICODE = "";//"✉";
     private final static String PASSWORD = "pa$$w0rd" + UNICODE;
     private final static String HOST = "localhost";
@@ -24,7 +24,7 @@ public class ClientControlTest {
     public final int port;
     private ClientModel client;
 
-    public ClientControlTest() {
+    public ClientModelTest() {
         assertNotNull(greenMail);
         greenMail.start();
 
@@ -46,7 +46,7 @@ public class ClientControlTest {
         client.verbindungAufbauen();
         client.run(PopState.TRANSACTION);
 
-        assertEquals(client.getMail_count(), 0);
+        assertEquals(client.getMailCount(), 0);
         assertEquals(client.getState(), PopState.TRANSACTION);
     }
 
@@ -55,9 +55,11 @@ public class ClientControlTest {
         deliverEmails();
 
         client.run(PopState.MAIL_AVAILABLE);
-        assertEquals(client.getMail_count(), 2);
-        client.run(PopState.TRANSACTION);
-        assertEquals(client.getMail_count(), 0);
+        assertEquals(client.getMailCount(), 2);
+        assertEquals(client.getState(), PopState.MAIL_AVAILABLE);
+        client.run();
+        assertEquals(client.getState(), PopState.DISCONECTED);
+        assertEquals(client.getMailCount(), 0);
         assertEquals(getMessageCount(TEST_USER), 0);
     }
 
@@ -78,7 +80,9 @@ public class ClientControlTest {
 
         Folder folder = store.getFolder("INBOX");
         folder.open(Folder.READ_ONLY);
-        return folder.getMessageCount();
+        int count = folder.getMessageCount();
+        folder.close(true);
+        return count;
     }
 
     /** Setup some E-Mails for fetching later. */
@@ -98,7 +102,7 @@ public class ClientControlTest {
         msg.setFrom("simon.kosch@haw-hamburg.de");
         msg.setSubject("Test Nachricht 2. " + UNICODE);
         msg.setText("Dies ist eine Testnachricht 2\n" +
-                "Diese Nachricht zerstört sich selber\r\n.\r\n in..." +
+                "Diese Nachricht zerstört sich selber\r\n..\r\n in..." +
                 UNICODE +
                 "Kurzer Zeit.\n");
         TEST_USER.deliver(msg);

@@ -6,31 +6,30 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.Socket;
 
-public class ClientModel implements Runnable {
+public class ClientModel implements IClientModel {
+    public static final String DIR_PREFIX = "./tmp/";
 
-    @Getter
-    @Setter(AccessLevel.PROTECTED)
-    private String ip;
-    @Getter
-    @Setter(AccessLevel.PROTECTED)
-    private int port;
-    @Getter
-    @Setter(AccessLevel.PROTECTED)
-    private Socket socket;
-    @Getter
-    @Setter(AccessLevel.PRIVATE)
-    private String username;
     @Getter(AccessLevel.PRIVATE)
-    @Setter(AccessLevel.PROTECTED)
-    private String password;
+    private final String ip;
+    @Getter(AccessLevel.PRIVATE)
+    private final int port;
+    @Getter
+    private final String username;
+    @Getter(AccessLevel.PRIVATE)
+    private final String password;
+    @Getter(AccessLevel.PRIVATE) @Setter(AccessLevel.PRIVATE)
+    private Socket socket;
     @Getter(AccessLevel.PROTECTED) //@Setter(AccessLevel.PROTECTED)
     private PopState state = PopState.DISCONECTED;
-    @Getter(AccessLevel.PUBLIC)
-    @Setter(AccessLevel.PRIVATE)
-    private int mail_count;
+    @Getter @Setter(AccessLevel.PRIVATE)
+    private int mailCount;
+    @Getter @Setter(AccessLevel.PRIVATE)
+    private String filePrefix;
 
     @Override
     public void run() {
@@ -46,6 +45,7 @@ public class ClientModel implements Runnable {
         if (PopState.DISCONECTED == getState() || PopState.EXPECTING_EXIT == getState())
             throw new RuntimeException("Can't start Client with state: " + getState().toString());
         while (PopState.EXPECTING_EXIT != getState() && getState() != tillState) {
+            // Finite state machine.
             try {
                 switch (getState()) {
                     case CONNECTED:
@@ -63,10 +63,14 @@ public class ClientModel implements Runnable {
                     case MAIL_AVAILABLE:
                         mail_fetch();
                         break;
+                    case EXPECTING_QUIT:
+                        quit();
+                        break;
                 }
             } catch (Exception e) {
                 e.printStackTrace();
                 try {
+                    // Try to gravefully quit.
                     quit();
                 } catch (Exception e1) {
                     e1.printStackTrace();
@@ -76,6 +80,7 @@ public class ClientModel implements Runnable {
         }
         if (getState() == PopState.EXPECTING_EXIT) {
             try {
+                // Close connection if needed.
                 verbindungTrennen();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -84,35 +89,43 @@ public class ClientModel implements Runnable {
     }
 
     private void mail_fetch() throws Exception {
+        // Get List of mails.
         UTF8Util.schreibe(socket.getOutputStream(), "LIST");
         UTF8Util.leseAssertOK(socket.getInputStream(), "List did not work.");
         String antwort = UTF8Util.lese(socket.getInputStream());
         assert antwort.indexOf(' ') != -1;
 
+        // Parse first Mail-ID.
         int mID = Integer.parseInt(antwort.substring(0, antwort.indexOf(' ')));
 
+        // Get first Mail.
         UTF8Util.schreibe(socket.getOutputStream(), "RETR " + mID);
         UTF8Util.leseAssertOK(socket.getInputStream(), "RETR " + mID + " did not work.");
         String msg = UTF8Util.lese(socket.getInputStream());
 
+        // Write retrieved Mail to disc.
+        FileWriter writer = new FileWriter(getFilePrefix() + mID);
+        writer.write(msg);
+        writer.close();
+
+        // Delete retrieved Mail.
         UTF8Util.schreibe(socket.getOutputStream(), "DELE " + mID);
-        UTF8Util.leseAssertOK(socket.getInputStream(), "DELE " + mID + " did not work.");
+        UTF8Util.leseAssertOK(socket.getInputStream(), "DELE " + mID + " did not work");
 
-        System.out.println(String.format("Msg retrieved:\n'%s' mail_count: %d", msg, getMail_count()));
-
-        setMail_count(getMail_count() - 1);
-        if (getMail_count() == 0) {
-            setState(PopState.TRANSACTION);
+        setMailCount(getMailCount() - 1);
+        if (getMailCount() == 0) {
+            setState(PopState.EXPECTING_QUIT);
         }
     }
 
     private void mail_check() throws Exception {
         UTF8Util.schreibe(socket.getOutputStream(), "STAT");
-        String antwort = UTF8Util.leseAssertOK(socket.getInputStream(), "Stat did not work.");
+        String antwort = UTF8Util.leseAssertOK(socket.getInputStream(), "Stat did not work");
         assert antwort.indexOf(' ') != -1;
 
-        setMail_count(Integer.parseInt(antwort.substring(0, antwort.indexOf(' '))));
-        if (mail_count > 0) {
+        // Parse count of Mails.
+        setMailCount(Integer.parseInt(antwort.substring(0, antwort.indexOf(' '))));
+        if (mailCount > 0) {
             setState(PopState.MAIL_AVAILABLE);
         }
     }
@@ -124,38 +137,37 @@ public class ClientModel implements Runnable {
 
     private void quit() throws Exception {
         UTF8Util.schreibe(socket.getOutputStream(), "QUIT");
-        UTF8Util.leseAssertOK(socket.getInputStream(), "Quit did not work.");
+        UTF8Util.leseAssertOK(socket.getInputStream(), "Quit did not work");
         setState(PopState.EXPECTING_EXIT);
     }
 
     private void authenticate_final() throws Exception {
-        UTF8Util.leseAssertOK(socket.getInputStream(), "Username or Password not accepted: '%s'");
+        UTF8Util.leseAssertOK(socket.getInputStream(), "Username or Password not accepted");
         setState(PopState.TRANSACTION);
     }
 
     private void authenticate_username() throws Exception {
-        UTF8Util.leseAssertOK(socket.getInputStream(), "Server does not greet: '%s'");
+        UTF8Util.leseAssertOK(socket.getInputStream(), "Server does not greet");
 
         UTF8Util.schreibe(socket.getOutputStream(), "USER " + username);
         setState(PopState.USERNAME_SEND);
     }
 
     private void authenticate_password() throws Exception {
-        UTF8Util.leseAssertOK(socket.getInputStream(), "Username not accepted: '%s'");
+        UTF8Util.leseAssertOK(socket.getInputStream(), "Username not accepted");
 
         UTF8Util.schreibe(socket.getOutputStream(), "PASS " + password);
         setState(PopState.PASSWORD_SEND);
     }
 
-    public ClientModel(String username, String password) {
-        this("127.0.0.1", 50000, username, password);
-    }
-
     public ClientModel(String ip, int port, String username, String password) {
-        setIp(ip);
-        setPort(port);
-        setUsername(username);
-        setPassword(password);
+        this.ip = ip;
+        this.port = port;
+        this.username = username;
+        this.password = password;
+        setFilePrefix(DIR_PREFIX + ip + "/" + username + "/");
+        if (!(new File(getFilePrefix())).mkdirs())
+            throw new RuntimeException("Couldn't create directories for emails.");
         System.out.print("127.0.0.1" + " -> " + getIp()
                 + ":" + getPort() + " (Client -> Server)." + "\n");
     }

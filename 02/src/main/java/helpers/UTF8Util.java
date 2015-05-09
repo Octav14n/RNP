@@ -5,8 +5,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
+import java.util.concurrent.TimeoutException;
 
 public class UTF8Util {
+    public static long timeout = 5000;
+
     public static final String OK = "+OK";
     public static final String ERR = "-ERR";
     public static final String SEP = "\r\n"; // CR LF - Seperator
@@ -22,7 +25,7 @@ public class UTF8Util {
     public static String leseAssertOK(InputStream inputStream, String errorMsg) throws Exception {
         String antwort = lese(inputStream);
         if (!antwort.startsWith(OK))
-            throw new Exception(String.format(errorMsg, antwort));
+            throw new Exception(String.format("%s: '%s'", errorMsg, antwort));
         if (antwort.length() > OK.length())
             return antwort.substring(OK.length() + 1); // Strip UTF8Util.OK and Space-Character.
         else
@@ -41,7 +44,16 @@ public class UTF8Util {
         schreibeBytes(outputStream, stringToBytes(msg + SEP));
     }
 
-    public static String lese(InputStream inputStream) throws IOException {
+    public static void schreibeOK(OutputStream outputStream, String antwort) throws IOException {
+        schreibe(outputStream, OK + " " + antwort);
+    }
+
+    public static void schreibeERR(OutputStream outputStream, String antwort) throws IOException {
+        schreibe(outputStream, ERR + " " + antwort);
+    }
+
+    public static String lese(InputStream inputStream) throws IOException, TimeoutException {
+        long start = System.currentTimeMillis();
         String read = "";
         while (!read.endsWith(SEP)) {
             int available_size = inputStream.available();
@@ -53,6 +65,11 @@ public class UTF8Util {
                 }
                 read += bytesToString(daten);
             }
+            try {
+                Thread.sleep(2);
+            } catch (InterruptedException e) {}
+            if (System.currentTimeMillis() - start > timeout)
+                throw new TimeoutException();
         }
         int msgEnd = read.length() - 2;
         return read.substring(0, msgEnd);
