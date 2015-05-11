@@ -166,7 +166,8 @@ public class ClientModel implements IClientModel {
         this.username = username;
         this.password = password;
         setFilePrefix(DIR_PREFIX + ip + "/" + username + "/");
-        if (!(new File(getFilePrefix())).mkdirs())
+        File prefixDir = new File(getFilePrefix());
+        if (!prefixDir.isDirectory() && !prefixDir.mkdirs())
             throw new RuntimeException("Couldn't create directories for emails.");
         System.out.print("127.0.0.1" + " -> " + getIp()
                 + ":" + getPort() + " (Client -> Server)." + "\n");

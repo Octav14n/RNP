@@ -15,8 +15,7 @@ import java.io.IOException;
 import java.util.Properties;
 
 public class ClientModelTest {
-    private final static String UNICODE = "";//"✉";
-    private final static String PASSWORD = "pa$$w0rd" + UNICODE;
+    private final static String PASSWORD = "pa$$w0rd";
     private final static String HOST = "localhost";
 
     public final GreenMail greenMail = new GreenMail(ServerSetupTest.POP3);
@@ -90,20 +89,18 @@ public class ClientModelTest {
         MimeMessage msg = new MimeMessage((Session) null);
         msg.addRecipients(Message.RecipientType.TO, "test@127.0.0.1");
         msg.setFrom("simon.kosch@haw-hamburg.de");
-        msg.setSubject("Test Nachricht. " + UNICODE);
+        msg.setSubject("Test Nachricht. ");
         msg.setText("Dies ist eine Testnachricht\n" +
                 "Diese Nachricht zerstört sich selber\n\r\n in..." +
-                UNICODE +
                 "Kurzer Zeit.\n");
         TEST_USER.deliver(msg);
 
         msg = new MimeMessage((Session) null);
         msg.addRecipients(Message.RecipientType.TO, "test@127.0.0.1");
         msg.setFrom("simon.kosch@haw-hamburg.de");
-        msg.setSubject("Test Nachricht 2. " + UNICODE);
+        msg.setSubject("Test Nachricht 2. ");
         msg.setText("Dies ist eine Testnachricht 2\n" +
                 "Diese Nachricht zerstört sich selber\r\n..\r\n in..." +
-                UNICODE +
                 "Kurzer Zeit.\n");
         TEST_USER.deliver(msg);
     }

@@ -14,6 +14,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.Socket;
+import java.nio.CharBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.TimeoutException;
@@ -42,6 +43,7 @@ public class ServerClient implements Runnable {
     public void run() {
         System.out.print("Verbindung hergestellt" + "\n");
         try {
+            UTF8Util.schreibeOK(socket.getOutputStream(), "Hello, Welcome in my net.");
             boolean stopp = false;
             while (!stopp && !socket.isClosed()) {
                 // Lese die eingehenden Daten.
@@ -62,6 +64,7 @@ public class ServerClient implements Runnable {
                                 stopp = true;
                             }
                         } catch (Exception e) {
+                            e.printStackTrace();
                             if (socket.isOutputShutdown())
                                 stopp = true;
                             else
@@ -69,6 +72,7 @@ public class ServerClient implements Runnable {
                         }
                     }
                 } catch (TimeoutException e) {
+                    e.printStackTrace();
                     stopp = true;
                 }
             }
@@ -95,11 +99,17 @@ public class ServerClient implements Runnable {
                         throw new BadCommandException();
                     if (woerter.length < 2)
                         throw new IllegalArgumentException("USER needs one argument.");
+                    if (woerter[1].indexOf('@') == -1)
+                        throw new IllegalArgumentException("USER name needs one at.");
+                    if (woerter[1].indexOf('/') != -1 || woerter[1].indexOf('\\') != -1)
+                        throw new IllegalArgumentException("USER name is not valid.");
 
                     antwort = "now use PASS to authenticate yourself.";
                     setState(PopState.USERNAME_SEND);
+                    String username = woerter[1].substring(0, woerter[1].indexOf('@'));
+                    String server = woerter[1].substring(woerter[1].indexOf('@') + 1);
                     setUsername(woerter[1]);
-                    setFilePrefix(ClientModel.DIR_PREFIX + server.getIp() + "/" + getUsername() + "/");
+                    setFilePrefix(ClientModel.DIR_PREFIX + server + "/" + username + "/");
                     break;
                 case "PASS":
                     if (getState() != PopState.USERNAME_SEND)
@@ -163,9 +173,11 @@ public class ServerClient implements Runnable {
 
                     BufferedReader reader = new BufferedReader(new FileReader(mailRetr));
                     antwort = "\r\n";
-                    String read;
-                    while ((read = reader.readLine()) != null) {
-                        antwort += read;
+                    int readed = 0;
+                    char b[] = new char[1024];
+
+                    while ((readed = reader.read(b)) != -1) {
+                        antwort += String.valueOf(b, 0, readed);
                     }
                     break;
                 case "DELE":

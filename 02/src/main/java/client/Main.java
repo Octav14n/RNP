@@ -23,7 +23,7 @@ public class Main {
         ClientControl.interval = Integer.parseInt(refresh);
 
         String server;
-        while (!(server = reader.readLine()).equals("")){
+        while (!"".equals(server = reader.readLine())){
             int port = Integer.parseInt(reader.readLine());
             String user = reader.readLine();
             String pass = reader.readLine();
