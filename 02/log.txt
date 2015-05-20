@@ -1,0 +1,4 @@
++OK POP3 GreenMail Server ready
++OK
+-ERR Authentication failed: com.icegreen.greenmail.user.UserException: Invalid password
++OK bye see you soon

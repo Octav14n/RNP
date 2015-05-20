@@ -1,0 +1,8 @@
+Trying 127.0.0.1...
+Connected to localhost.
+Escape character is '^]'.
+-ERR java.lang.UnsupportedOperationException: Operation 'Test' is not supported.
+-ERR java.lang.UnsupportedOperationException: Operation 'QUIT' is not supported.
+
+telnet> quit
+Connection closed.
